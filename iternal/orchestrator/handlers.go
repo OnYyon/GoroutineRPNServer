@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/OnYyon/GoroutineRPNServer/iternal/parser"
 	"github.com/google/uuid"
@@ -77,4 +78,32 @@ func (a *API) AddNewExpression(w http.ResponseWriter, r *http.Request) {
 	a.mu.Unlock()
 	w.WriteHeader(201)
 	json.NewEncoder(w).Encode(map[string]string{"id": expression.ID})
+}
+
+func (a *API) GetSliceOfExpressions(w http.ResponseWriter, r *http.Request) {
+	expressionsSlice := make([]Expression, 0, len(a.Expressions))
+	for _, expr := range a.Expressions {
+		expressionsSlice = append(expressionsSlice, expr)
+	}
+	response := struct {
+		Expressions []Expression `json:"expressions"`
+	}{
+		Expressions: expressionsSlice,
+	}
+	w.WriteHeader(200)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func (a *API) GetExpressionByID(w http.ResponseWriter, r *http.Request) {
+	id := strings.TrimPrefix(r.URL.Path, "/api/v1/expressions/")
+	expression, ok := a.Expressions[id]
+	if !ok {
+		http.Error(w, "Incorrect ID", 404)
+		return
+	}
+
+	w.WriteHeader(200)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(expression)
 }
