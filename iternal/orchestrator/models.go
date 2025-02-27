@@ -1,10 +1,17 @@
 package orchestrator
 
-import "sync"
+import (
+	"sync"
+	"time"
+
+	"github.com/OnYyon/GoroutineRPNServer/iternal/config"
+)
 
 type API struct {
 	Expressions map[string]Expression
 	Tasks       map[string][]Task
+	queque      chan Task
+	cfg         *config.Config
 	mu          sync.Mutex
 }
 
@@ -17,14 +24,14 @@ type Expression struct {
 }
 
 type Task struct {
-	ID            string  `json:"id"`
-	Arg1          string  `json:"arg1"`
-	Arg2          string  `json:"arg2"`
-	Operation     string  `json:"operation"`
-	Result        float64 `json:"result"`
-	Status        string  `json:"status"`
-	OperationTime int64   `json:"operation_time"`
-	ExpressionID  string  `json:"expression_id"`
+	ID            string        `json:"id"`
+	Arg1          string        `json:"arg1"`
+	Arg2          string        `json:"arg2"`
+	Operation     string        `json:"operation"`
+	Result        float64       `json:"result"`
+	Status        string        `json:"-"`
+	OperationTime time.Duration `json:"operation_time"`
+	ExpressionID  string        `json:"-"`
 }
 
 const (
