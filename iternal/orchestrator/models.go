@@ -32,6 +32,7 @@ type Task struct {
 	Status        string        `json:"-"`
 	OperationTime time.Duration `json:"operation_time"`
 	ExpressionID  string        `json:"-"`
+	Error         error
 }
 
 const (

@@ -102,13 +102,10 @@ func (a *API) createTasks(rpn []string, expID string, pos int) ([]string, []Task
 			}
 			if isNumber(stack[len(stack)-1]) && isNumber(stack[len(stack)-2]) {
 				task := Task{
-					ID:            getID(),
-					Arg1:          stack[len(stack)-2],
-					Arg2:          stack[len(stack)-1],
-					Operation:     v,
-					Status:        StatusNew,
-					OperationTime: getTimeOp(v, a.cfg),
-					ExpressionID:  expID,
+					ID:        getID(),
+					Arg1:      stack[len(stack)-2],
+					Arg2:      stack[len(stack)-1],
+					Operation: v,
 				}
 				tasks = append(tasks, task)
 				stack = stack[:len(stack)-2]
