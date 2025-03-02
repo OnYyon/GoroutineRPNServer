@@ -166,6 +166,7 @@ func (a *API) AddNewExpression(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	pos := 0
+	// TODO: Пересмотреть структуру добавления
 	new_rpn, tasks := a.createTasks(rpn, expression.ID, pos)
 	for len(new_rpn) != 1 {
 		a.mu.Lock()
@@ -224,4 +225,8 @@ func (a *API) GetTasksToAgent(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(200)
 	json.NewEncoder(w).Encode(task)
+}
+
+func (a *API) GetPostResult(w http.ResponseWriter, r *http.Request) {
+
 }
