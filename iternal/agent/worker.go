@@ -18,14 +18,35 @@ func Worker(wg *sync.WaitGroup, id int) {
 			continue
 		}
 
-		result, err := evaluateExpression(task)
-		if err != nil {
-			continue
-		}
-		err = SendResult(Res{ID: task.ID, Result: result})
-		fmt.Printf("sending %v, goroutine: %v\n", task.ID, id)
-		if err != nil {
-			fmt.Printf("Worker %d: failed to send result", err)
+		res := make(chan float64, 1)
+		errors := make(chan error, 1)
+		go func() {
+			result, err := evaluateExpression(task)
+			if err != nil {
+				errors <- err
+			} else {
+				res <- result
+			}
+		}()
+		select {
+		case result := <-res:
+			err = SendResult(Res{ID: task.ID, Result: result, Timeout: false, Errors: nil})
+			fmt.Printf("sending %v, goroutine: %v, %v\n", task.ID, id, res)
+			if err != nil {
+				fmt.Printf("Worker %d: failed to send result", err)
+			}
+		case err := <-errors:
+			err = SendResult(Res{ID: task.ID, Result: 0, Timeout: false, Errors: err})
+			fmt.Printf("errors %v, goroutine: %v\n", task.ID, id)
+			if err != nil {
+				fmt.Printf("Worker %d: failed to send result", err)
+			}
+		case <-time.After(task.OperationTime):
+			err = SendResult(Res{ID: task.ID, Result: 0, Timeout: true, Errors: nil})
+			fmt.Printf("timeout %v, goroutine: %v\n", task, id)
+			if err != nil {
+				fmt.Printf("Worker %d: failed to send result", err)
+			}
 		}
 	}
 }
@@ -42,7 +63,7 @@ func evaluateExpression(task *orchestrator.Task) (float64, error) {
 	var result float64
 	switch task.Operation {
 	case "+":
-		result = a + b
+		return a + b, nil
 	case "-":
 		result = a - b
 	case "*":

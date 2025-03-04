@@ -2,11 +2,20 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/OnYyon/GoroutineRPNServer/iternal/agent"
 	"github.com/OnYyon/GoroutineRPNServer/iternal/config"
+	"github.com/joho/godotenv"
 )
+
+func init() {
+	// loads values from .env into the system
+	if err := godotenv.Load(); err != nil {
+		log.Print("No .env file found")
+	}
+}
 
 func main() {
 	cfg := config.NewConfig()
