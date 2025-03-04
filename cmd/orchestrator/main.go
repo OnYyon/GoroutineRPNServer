@@ -26,6 +26,7 @@ func main() {
 
 	//Iternal handlers
 	r.HandleFunc("/iternal/task", api.GetTasksToAgent).Methods("GET")
+	r.HandleFunc("/iternal/task", api.GetPostResult).Methods("POST")
 
 	if err := http.ListenAndServe(":8080", r); err != nil {
 		log.Fatal(err)

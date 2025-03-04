@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/OnYyon/GoroutineRPNServer/iternal/config"
@@ -14,12 +13,10 @@ import (
 	"github.com/google/uuid"
 )
 
-var Wg sync.WaitGroup
-
 // For global data storage
 func NewAPI() *API {
 	return &API{
-		Expressions: make(map[string]Expression),
+		Expressions: make(map[string]*Expression),
 		Tasks:       make(map[string][]Task),
 		cfg:         config.NewConfig(),
 		queque:      make(chan Task),
@@ -42,46 +39,6 @@ func getTimeOp(operation string, cfg *config.Config) time.Duration {
 	}
 }
 
-// LEGACY:
-/*
-func createTasks(rpn []string, expID string, cfg *config.Config) []Task {
-	var stack []*float64
-	var tasks []Task
-
-	for _, v := range rpn {
-		if op, err := strconv.ParseFloat(v, 64); err == nil {
-			stack = append(stack, &op)
-		} else {
-			if len(stack) < 2 {
-				return nil
-			}
-			a, b := stack[len(stack)-2], stack[len(stack)-1]
-			stack = stack[:len(stack)-2]
-
-			task := Task{
-				ID:            getID(),
-				Arg1:          *a,
-				Arg2:          *b,
-				Operation:     v,
-				Status:        StatusNew,
-				OperationTime: getTimeOp(v, cfg), // NOTE: I think it can be done better.
-				ExpressionID:  expID,
-			}
-			tasks = append(tasks, task)
-
-			stack = append(stack, &task.Result)
-		}
-	}
-	if len(stack) != 1 {
-		return nil
-	}
-	for _, v := range tasks {
-		fmt.Println(v.ID, v.Arg1, v.Arg1, v.Result, v.Status)
-	}
-	return tasks
-}
-*/
-
 func isNumber(s string) bool {
 	_, err := strconv.ParseFloat(s, 64)
 	return err == nil
@@ -91,7 +48,7 @@ func isOperator(s string) bool {
 	return s == "+" || s == "-" || s == "*" || s == "/"
 }
 
-func (a *API) createTasks(rpn []string, expID string, pos int) ([]string, []Task) {
+func (a *API) createTasks(rpn []string, expID string) ([]string, []Task) {
 	stack := []string{}
 	tasks := []Task{}
 	for _, v := range rpn {
@@ -120,14 +77,54 @@ func (a *API) createTasks(rpn []string, expID string, pos int) ([]string, []Task
 			stack = append(stack, v)
 		} else {
 			a.mu.Lock()
+			pos := 0
+			for i, j := range a.Tasks[expID] {
+				if j.ID == v {
+					pos = i
+				}
+			}
 			stack = append(stack, fmt.Sprint(a.Tasks[expID][pos].Result))
 			a.mu.Unlock()
-			fmt.Println(stack)
-			pos++
 		}
 	}
-
 	return stack, tasks
+}
+
+func (a *API) continueExpressionCalculation(expID string) {
+	new_rpn, tasks := a.createTasks(a.rpnCurrent, expID)
+	if len(tasks) == 0 {
+		a.Expressions[expID].Result = a.Tasks[expID][len(a.Tasks[expID])-1].Result
+		//fmt.Printf("Final result for expression %s: %v\n", expID, a.Tasks[expID][len(a.Tasks[expID])-1].Result)
+		return
+	}
+
+	a.mu.Lock()
+	a.Tasks[expID] = append(a.Tasks[expID], tasks...)
+	a.rpnCurrent = new_rpn
+	a.mu.Unlock()
+
+	go func() {
+		for _, v := range tasks {
+			a.queque <- v
+		}
+	}()
+}
+
+func (a *API) calculateExpression(exp *Expression) {
+	rpn, err := parser.ParserToRPN(exp.Input)
+	if err != nil {
+		return
+	}
+	new_rpn, tasks := a.createTasks(rpn, exp.ID)
+	a.mu.Lock()
+	a.Tasks[exp.ID] = append(a.Tasks[exp.ID], tasks...)
+	a.rpnCurrent = new_rpn
+	a.mu.Unlock()
+	go func() {
+		for _, v := range tasks {
+			a.queque <- v
+		}
+	}()
 }
 
 func (a *API) getTaskFromChan() (Task, bool) {
@@ -157,31 +154,9 @@ func (a *API) AddNewExpression(w http.ResponseWriter, r *http.Request) {
 		Input:  request.Expression,
 	}
 	a.mu.Lock()
-	a.Expressions[expression.ID] = expression
+	a.Expressions[expression.ID] = &expression
 	a.mu.Unlock()
-	rpn, err := parser.ParserToRPN(expression.Input)
-	fmt.Println(rpn)
-	if err != nil {
-		http.Error(w, "Oppps something went wrong", 500)
-		return
-	}
-	pos := 0
-	// TODO: Пересмотреть структуру добавления
-	new_rpn, tasks := a.createTasks(rpn, expression.ID, pos)
-	for len(new_rpn) != 1 {
-		a.mu.Lock()
-		a.Tasks[expression.ID] = append(a.Tasks[expression.ID], tasks...)
-		go func() {
-			for _, v := range tasks {
-				Wg.Add(1)
-				a.queque <- v
-			}
-			Wg.Wait()
-		}()
-		a.mu.Unlock()
-		new_rpn, tasks = a.createTasks(new_rpn, expression.ID, pos)
-	}
-	fmt.Println(a.Tasks[expression.ID])
+	a.calculateExpression(&expression)
 	w.WriteHeader(201)
 	json.NewEncoder(w).Encode(map[string]string{"id": expression.ID})
 }
@@ -190,7 +165,7 @@ func (a *API) GetSliceOfExpressions(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	expressionsSlice := make([]Expression, 0, len(a.Expressions))
 	for _, expr := range a.Expressions {
-		expressionsSlice = append(expressionsSlice, expr)
+		expressionsSlice = append(expressionsSlice, *expr)
 	}
 	response := struct {
 		Expressions []Expression `json:"expressions"`
@@ -224,9 +199,52 @@ func (a *API) GetTasksToAgent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(200)
-	json.NewEncoder(w).Encode(task)
+	json.NewEncoder(w).Encode(&task)
 }
 
 func (a *API) GetPostResult(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	var result struct {
+		ID     string  `json:"id"`
+		Result float64 `json:"result"`
+	}
 
+	if err := json.NewDecoder(r.Body).Decode(&result); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	for exprID, tasks := range a.Tasks {
+		for i, task := range tasks {
+			if task.ID == result.ID {
+				a.Tasks[exprID][i].Result = result.Result
+				a.Tasks[exprID][i].Status = StatusCompleted
+				// fmt.Printf("Updated task %s with result: %f\n", result.ID, result.Result)
+
+				allCompleted := true
+				for _, t := range a.Tasks[exprID] {
+					if t.Status != StatusCompleted {
+						allCompleted = false
+						break
+					}
+				}
+
+				if allCompleted {
+					// fmt.Println("All tasks completed. Processing next steps.")
+					a.Expressions[exprID] = &Expression{
+						ID:     exprID,
+						Status: StatusCompleted,
+						Input:  a.Expressions[exprID].Input,
+					}
+					go a.continueExpressionCalculation(exprID)
+				}
+				w.WriteHeader(200)
+				return
+			}
+		}
+	}
+	http.Error(w, "Task not found", 404)
 }

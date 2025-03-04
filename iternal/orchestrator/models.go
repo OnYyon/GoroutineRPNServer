@@ -8,9 +8,10 @@ import (
 )
 
 type API struct {
-	Expressions map[string]Expression
+	Expressions map[string]*Expression
 	Tasks       map[string][]Task
 	queque      chan Task
+	rpnCurrent  []string
 	cfg         *config.Config
 	mu          sync.Mutex
 }
@@ -33,6 +34,11 @@ type Task struct {
 	OperationTime time.Duration `json:"operation_time"`
 	ExpressionID  string        `json:"-"`
 	Error         error
+}
+
+type Result struct {
+	ID     string
+	Result float64
 }
 
 const (
