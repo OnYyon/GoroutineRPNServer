@@ -1,5 +1,6 @@
 package orchestrator
 
+// TODO: separeate only handlers. Other to utils.go
 import (
 	"encoding/json"
 	"fmt"
@@ -20,6 +21,7 @@ func NewAPI() *API {
 		Tasks:       make(map[string][]Task),
 		cfg:         config.NewConfig(),
 		queque:      make(chan Task),
+		rpnCurrent:  make(map[string][]string),
 	}
 }
 
@@ -76,7 +78,7 @@ func (a *API) createTasks(rpn []string, expID string) ([]string, []Task) {
 		} else if isNumber(v) {
 			stack = append(stack, v)
 		} else {
-			a.mu.Lock()
+			a.muTasks.Lock()
 			pos := 0
 			for i, j := range a.Tasks[expID] {
 				if j.ID == v {
@@ -84,30 +86,30 @@ func (a *API) createTasks(rpn []string, expID string) ([]string, []Task) {
 				}
 			}
 			stack = append(stack, fmt.Sprint(a.Tasks[expID][pos].Result))
-			a.mu.Unlock()
+			a.muTasks.Unlock()
 		}
 	}
 	return stack, tasks
 }
 
 func (a *API) continueExpressionCalculation(expID string) {
-	new_rpn, tasks := a.createTasks(a.rpnCurrent, expID)
+	new_rpn, tasks := a.createTasks(a.rpnCurrent[expID], expID)
 	if len(tasks) == 0 {
 		a.Expressions[expID].Result = a.Tasks[expID][len(a.Tasks[expID])-1].Result
-		//fmt.Printf("Final result for expression %s: %v\n", expID, a.Tasks[expID][len(a.Tasks[expID])-1].Result)
+		fmt.Printf("Final result for expression %s: %v\n", expID, a.Tasks[expID][len(a.Tasks[expID])-1].Result)
 		return
 	}
 
-	a.mu.Lock()
+	a.muTasks.Lock()
 	a.Tasks[expID] = append(a.Tasks[expID], tasks...)
-	a.rpnCurrent = new_rpn
-	a.mu.Unlock()
+	a.rpnCurrent[expID] = new_rpn
 
 	go func() {
 		for _, v := range tasks {
 			a.queque <- v
 		}
 	}()
+	a.muTasks.Unlock()
 }
 
 func (a *API) calculateExpression(exp *Expression) {
@@ -116,10 +118,10 @@ func (a *API) calculateExpression(exp *Expression) {
 		return
 	}
 	new_rpn, tasks := a.createTasks(rpn, exp.ID)
-	a.mu.Lock()
-	a.Tasks[exp.ID] = append(a.Tasks[exp.ID], tasks...)
-	a.rpnCurrent = new_rpn
-	a.mu.Unlock()
+	a.muTasks.Lock()
+	a.Tasks[exp.ID] = tasks
+	a.rpnCurrent[exp.ID] = new_rpn
+	a.muTasks.Unlock()
 	go func() {
 		for _, v := range tasks {
 			a.queque <- v
@@ -128,8 +130,8 @@ func (a *API) calculateExpression(exp *Expression) {
 }
 
 func (a *API) getTaskFromChan() (Task, bool) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
+	a.muTasks.Lock()
+	defer a.muTasks.Unlock()
 	select {
 	case task := <-a.queque:
 		return task, true
@@ -153,10 +155,10 @@ func (a *API) AddNewExpression(w http.ResponseWriter, r *http.Request) {
 		Status: StatusNew,
 		Input:  request.Expression,
 	}
-	a.mu.Lock()
+	a.muExpr.Lock()
 	a.Expressions[expression.ID] = &expression
-	a.mu.Unlock()
-	a.calculateExpression(&expression)
+	a.muExpr.Unlock()
+	go a.calculateExpression(&expression)
 	w.WriteHeader(201)
 	json.NewEncoder(w).Encode(map[string]string{"id": expression.ID})
 }
@@ -214,15 +216,15 @@ func (a *API) GetPostResult(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.mu.Lock()
-	defer a.mu.Unlock()
+	a.muTasks.Lock()
+	defer a.muTasks.Unlock()
 
 	for exprID, tasks := range a.Tasks {
 		for i, task := range tasks {
 			if task.ID == result.ID {
 				a.Tasks[exprID][i].Result = result.Result
 				a.Tasks[exprID][i].Status = StatusCompleted
-				// fmt.Printf("Updated task %s with result: %f\n", result.ID, result.Result)
+				fmt.Printf("Updated task %s with result: %f\n", result.ID, result.Result)
 
 				allCompleted := true
 				for _, t := range a.Tasks[exprID] {
@@ -233,7 +235,7 @@ func (a *API) GetPostResult(w http.ResponseWriter, r *http.Request) {
 				}
 
 				if allCompleted {
-					// fmt.Println("All tasks completed. Processing next steps.")
+					fmt.Println("All tasks completed. Processing next steps.")
 					a.Expressions[exprID] = &Expression{
 						ID:     exprID,
 						Status: StatusCompleted,

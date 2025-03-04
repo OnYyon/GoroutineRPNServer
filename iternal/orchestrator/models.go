@@ -11,9 +11,10 @@ type API struct {
 	Expressions map[string]*Expression
 	Tasks       map[string][]Task
 	queque      chan Task
-	rpnCurrent  []string
+	rpnCurrent  map[string][]string
 	cfg         *config.Config
-	mu          sync.Mutex
+	muTasks     sync.RWMutex
+	muExpr      sync.RWMutex
 }
 
 type Expression struct {
@@ -47,3 +48,13 @@ const (
 	StatusCompleted  = "completed"
 	StatusFailed     = "failed"
 )
+
+/*
+curl -X POST http://127.0.0.1:8080/api/v1/calculate \
+     -H "Content-Type: application/json" \
+     -d '{"expression": "(2+2)*2"}' &
+
+curl -X POST http://127.0.0.1:8080/api/v1/calculate \
+     -H "Content-Type: application/json" \
+     -d '{"expression": "2+2*2"}' &
+*/
