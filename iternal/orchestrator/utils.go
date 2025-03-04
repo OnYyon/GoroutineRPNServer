@@ -21,6 +21,17 @@ func NewAPI() *API {
 	}
 }
 
+func (a *API) getTaskFromChan() (Task, bool) {
+	a.muTasks.Lock()
+	defer a.muTasks.Unlock()
+	select {
+	case task := <-a.queque:
+		return task, true
+	default:
+		return Task{}, false
+	}
+}
+
 func getID() string {
 	return uuid.New().String()
 }
@@ -92,6 +103,7 @@ func (a *API) continueExpressionCalculation(expID string) {
 	new_rpn, tasks := a.createTasks(a.rpnCurrent[expID], expID)
 	if len(tasks) == 0 {
 		a.Expressions[expID].Result = a.Tasks[expID][len(a.Tasks[expID])-1].Result
+		// For debugging
 		// fmt.Printf("Final result for expression %s: %v\n", expID, a.Tasks[expID][len(a.Tasks[expID])-1].Result)
 		return
 	}
@@ -124,15 +136,4 @@ func (a *API) calculateExpression(exp *Expression) {
 			a.queque <- v
 		}
 	}()
-}
-
-func (a *API) getTaskFromChan() (Task, bool) {
-	a.muTasks.Lock()
-	defer a.muTasks.Unlock()
-	select {
-	case task := <-a.queque:
-		return task, true
-	default:
-		return Task{}, false
-	}
 }

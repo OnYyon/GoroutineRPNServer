@@ -8,8 +8,9 @@ import (
 	"strings"
 )
 
-// For global data storage
 func (a *API) AddNewExpression(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "http://127.0.0.1:8081")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST")
 	w.Header().Set("Content-Type", "application/json")
 	var request struct {
 		Expression string `json:"expression"`
@@ -33,6 +34,8 @@ func (a *API) AddNewExpression(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) GetSliceOfExpressions(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "http://127.0.0.1:8081")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST")
 	w.Header().Set("Content-Type", "application/json")
 	expressionsSlice := make([]Expression, 0, len(a.Expressions))
 	for _, expr := range a.Expressions {
@@ -48,8 +51,9 @@ func (a *API) GetSliceOfExpressions(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) GetExpressionByID(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "http://127.0.0.1:8081")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST")
 	w.Header().Set("Content-Type", "application/json")
-	// TODO: Varible in url. Change method maybe
 	id := strings.TrimPrefix(r.URL.Path, "/api/v1/expressions/")
 	expression, ok := a.Expressions[id]
 	if !ok {
@@ -63,6 +67,8 @@ func (a *API) GetExpressionByID(w http.ResponseWriter, r *http.Request) {
 
 // Iternal part of handlers
 func (a *API) GetTasksToAgent(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "http://127.0.0.1:8081")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST")
 	w.Header().Set("Content-Type", "application/json")
 	task, ok := a.getTaskFromChan()
 	if !ok {
@@ -74,6 +80,8 @@ func (a *API) GetTasksToAgent(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) GetPostResult(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "http://127.0.0.1:8081")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST")
 	w.Header().Set("Content-Type", "application/json")
 	var result struct {
 		ID      string  `json:"id"`
@@ -105,6 +113,7 @@ func (a *API) GetPostResult(w http.ResponseWriter, r *http.Request) {
 			if task.ID == result.ID {
 				a.Tasks[exprID][i].Result = result.Result
 				a.Tasks[exprID][i].Status = StatusCompleted
+				// For debuging
 				// fmt.Printf("Updated task %s with result: %f\n", result.ID, result.Result)
 
 				allCompleted := true
@@ -116,7 +125,6 @@ func (a *API) GetPostResult(w http.ResponseWriter, r *http.Request) {
 				}
 
 				if allCompleted {
-					// fmt.Println("All tasks completed. Processing next steps.")
 					a.Expressions[exprID] = &Expression{
 						ID:     exprID,
 						Status: StatusCompleted,
