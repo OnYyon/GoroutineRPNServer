@@ -1,35 +1,36 @@
-# Используем официальный образ Go для сборки
-FROM golang:1.20 AS builder
+# Build stage
+FROM golang:alpine AS builder
 
-# Устанавливаем рабочую директорию
-WORKDIR /app
+# Установите рабочую директорию
+WORKDIR /go/src/app
 
-# Копируем go.mod и go.sum для установки зависимостей
+# Скопируйте зависимости
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Копируем весь код в контейнер
+# Скопируйте код
 COPY . .
 
-# Сборка приложения
-RUN go build -o agent ./cmd/agent/main.go
-RUN go build -o orchestrator ./cmd/orchestrator/main.go
-RUN go build -o web ./web/main.go
+# Устанавливаем переменные окружения для совместимости
+ARG TARGETOS=linux
+ARG TARGETARCH=amd64
 
-# Используем более легкий образ для запуска
+# Собираем Go-приложения под Linux
+RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o /go/bin/agent ./cmd/agent
+RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o /go/bin/orchestrator ./cmd/orchestrator
+RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o /go/bin/web ./web
+
+# Final stage
 FROM alpine:latest
 
-# Устанавливаем необходимые зависимости
-RUN apk --no-cache add ca-certificates
+WORKDIR /app
+COPY --from=builder /go/bin/agent /app/agent
+COPY --from=builder /go/bin/orchestrator /app/orchestrator
+COPY --from=builder /go/bin/web /app/web
 
-# Копируем собранные бинарники из этапа сборки
-COPY --from=builder /app/agent /usr/local/bin/agent
-COPY --from=builder /app/orchestrator /usr/local/bin/orchestrator
-COPY --from=builder /app/web /usr/local/bin/web
+RUN chmod +x /app/agent /app/orchestrator /app/web
 
-# Копируем статические файлы
-COPY --from=builder /app/web/static /usr/local/bin/static
-COPY --from=builder /app/web/templates /usr/local/bin/templates
+ENTRYPOINT ["/app/web"]
 
-# Указываем команду по умолчанию для запуска веб-приложения
-CMD ["web"]
+EXPOSE 8080
+EXPOSE 8081

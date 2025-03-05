@@ -1,4 +1,4 @@
-package main
+package orchestrator
 
 import (
 	"log"
@@ -15,7 +15,7 @@ func init() {
 	}
 }
 
-func main() {
+func StartOrchestrator() {
 	r := mux.NewRouter()
 
 	api := orchestrator.NewAPI()

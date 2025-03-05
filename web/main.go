@@ -1,4 +1,4 @@
-package main
+package web
 
 import (
 	"bytes"
@@ -9,7 +9,7 @@ import (
 	"net/http"
 )
 
-var templates = template.Must(template.ParseGlob("templates/*.html"))
+var templates = template.Must(template.ParseGlob("/web/templates/*.html"))
 
 // Структура для выражения
 type Expression struct {
@@ -70,7 +70,7 @@ func corsMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func main() {
+func StartWeb() {
 	http.HandleFunc("/", homeHandler)
 	http.HandleFunc("/add", addExpressionHandler)
 	http.HandleFunc("/expressions", getExpressionsHandler)

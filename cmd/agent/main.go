@@ -1,4 +1,4 @@
-package main
+package agent
 
 import (
 	"fmt"
@@ -17,7 +17,7 @@ func init() {
 	}
 }
 
-func main() {
+func StartAgent() {
 	cfg := config.NewConfig()
 	var wg sync.WaitGroup
 	for i := 0; i < cfg.ComputerPower; i++ {
