@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    ports:
+      - "8081:8081"
+    depends_on:
+      - orchestrator
+  orchestrator:
+    build:
+      context: .
+      dockerfile: cmd/orchestrator/Dockerfile
+    ports:
+      - "8080:8080"
+  agent:
+    build:
+      context: .
+      dockerfile: cmd/agent/Dockerfile
+    depends_on:
+      - orchestrator
+  
