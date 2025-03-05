@@ -1,4 +1,4 @@
-package orchestrator
+package main
 
 import (
 	"log"
@@ -15,7 +15,7 @@ func init() {
 	}
 }
 
-func StartOrchestrator() {
+func main() {
 	r := mux.NewRouter()
 
 	api := orchestrator.NewAPI()
@@ -27,7 +27,7 @@ func StartOrchestrator() {
 	r.HandleFunc("/iternal/task", api.GetTasksToAgent).Methods("GET")
 	r.HandleFunc("/iternal/task", api.GetPostResult).Methods("POST")
 
-	if err := http.ListenAndServe(":8080", r); err != nil {
+	if err := http.ListenAndServe("0.0.0.0:8080", r); err != nil {
 		log.Fatal(err)
 	}
 }

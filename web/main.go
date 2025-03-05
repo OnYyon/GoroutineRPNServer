@@ -1,4 +1,4 @@
-package web
+package main
 
 import (
 	"bytes"
@@ -9,7 +9,7 @@ import (
 	"net/http"
 )
 
-var templates = template.Must(template.ParseGlob("/web/templates/*.html"))
+var templates = template.Must(template.ParseGlob("./web/templates/*.html"))
 
 // Структура для выражения
 type Expression struct {
@@ -36,7 +36,7 @@ func addExpressionHandler(w http.ResponseWriter, r *http.Request) {
 	data := map[string]string{"expression": expr}
 	jsonData, _ := json.Marshal(data)
 
-	resp, err := http.Post("http://127.0.0.1:8080/api/v1/calculate", "application/json", bytes.NewBuffer(jsonData))
+	resp, err := http.Post("http://orchestrator:8080/api/v1/calculate", "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		http.Error(w, "Failed to send request", http.StatusInternalServerError)
 		return
@@ -48,7 +48,7 @@ func addExpressionHandler(w http.ResponseWriter, r *http.Request) {
 
 // Получение списка выражений
 func getExpressionsHandler(w http.ResponseWriter, r *http.Request) {
-	resp, err := http.Get("http://127.0.0.1:8080/api/v1/expressions")
+	resp, err := http.Get("http://orchestrator :8080/api/v1/expressions")
 	if err != nil {
 		http.Error(w, "Failed to fetch expressions", http.StatusInternalServerError)
 		return
@@ -61,22 +61,13 @@ func getExpressionsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(body)
 }
 
-func corsMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")             // Замените на ваш источник
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST")    // Укажите методы, которые вы хотите разрешить
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Укажите заголовки, которые вы хотите разрешить
-		next.ServeHTTP(w, r)
-	})
-}
-
-func StartWeb() {
+func main() {
 	http.HandleFunc("/", homeHandler)
 	http.HandleFunc("/add", addExpressionHandler)
 	http.HandleFunc("/expressions", getExpressionsHandler)
 
 	// Подключение статических файлов (CSS, JS)
-	http.Handle("/static/", corsMiddleware(http.StripPrefix("/static/", http.FileServer(http.Dir("./static")))))
-
-	http.ListenAndServe(":8081", nil)
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./web/static"))))
+	fmt.Println("Starting web-interface on 8081")
+	http.ListenAndServe("0.0.0.0:8081", nil)
 }

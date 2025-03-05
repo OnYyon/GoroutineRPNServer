@@ -9,7 +9,7 @@ import (
 )
 
 func (a *API) AddNewExpression(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "http://127.0.0.1:8081")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST")
 	w.Header().Set("Content-Type", "application/json")
 	var request struct {
@@ -34,7 +34,7 @@ func (a *API) AddNewExpression(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) GetSliceOfExpressions(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "http://127.0.0.1:8081")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST")
 	w.Header().Set("Content-Type", "application/json")
 	expressionsSlice := make([]Expression, 0, len(a.Expressions))
@@ -51,7 +51,7 @@ func (a *API) GetSliceOfExpressions(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) GetExpressionByID(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "http://127.0.0.1:8081")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST")
 	w.Header().Set("Content-Type", "application/json")
 	id := strings.TrimPrefix(r.URL.Path, "/api/v1/expressions/")
@@ -67,7 +67,7 @@ func (a *API) GetExpressionByID(w http.ResponseWriter, r *http.Request) {
 
 // Iternal part of handlers
 func (a *API) GetTasksToAgent(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "http://127.0.0.1:8081")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST")
 	w.Header().Set("Content-Type", "application/json")
 	task, ok := a.getTaskFromChan()
@@ -80,7 +80,7 @@ func (a *API) GetTasksToAgent(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) GetPostResult(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "http://127.0.0.1:8081")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST")
 	w.Header().Set("Content-Type", "application/json")
 	var result struct {

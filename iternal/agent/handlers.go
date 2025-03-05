@@ -9,7 +9,7 @@ import (
 )
 
 func FetchTask() (*orchestrator.Task, error) {
-	resp, err := http.Get("http://127.0.0.1:8080/iternal/task")
+	resp, err := http.Get("http://orchestrator:8080/iternal/task")
 	if err != nil {
 		return nil, err
 	}
@@ -29,7 +29,7 @@ func SendResult(result Res) error {
 		return err
 	}
 
-	resp, err := http.Post("http://127.0.0.1:8080/iternal/task", "application/json", bytes.NewBuffer(data))
+	resp, err := http.Post("http://orchestrator:8080/iternal/task", "application/json", bytes.NewBuffer(data))
 	if err != nil {
 		return err
 	}
