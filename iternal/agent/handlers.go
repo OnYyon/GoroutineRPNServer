@@ -28,7 +28,6 @@ func SendResult(result Res) error {
 	if err != nil {
 		return err
 	}
-
 	resp, err := http.Post("http://orchestrator:8080/iternal/task", "application/json", bytes.NewBuffer(data))
 	if err != nil {
 		return err

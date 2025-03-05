@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"os"
 	"strconv"
 	"time"
@@ -34,7 +33,6 @@ func getEnv(key string, defaultValue string) string {
 
 func getEnvInt(name string, defaultValue int) int {
 	valueStr := getEnv(name, "")
-	fmt.Println(valueStr)
 	if value, err := strconv.Atoi(valueStr); err == nil {
 		return value
 	}

@@ -1,8 +1,8 @@
 package agent
 
 type Res struct {
-	ID      string
-	Result  float64
-	Timeout bool
-	Errors  error
+	ID      string  `json:"id"`
+	Result  float64 `json:"result"`
+	Timeout bool    `json:"timeout"`
+	Errors  string  `json:"errors"`
 }

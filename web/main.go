@@ -48,7 +48,7 @@ func addExpressionHandler(w http.ResponseWriter, r *http.Request) {
 
 // Получение списка выражений
 func getExpressionsHandler(w http.ResponseWriter, r *http.Request) {
-	resp, err := http.Get("http://orchestrator :8080/api/v1/expressions")
+	resp, err := http.Get("http://orchestrator:8080/api/v1/expressions")
 	if err != nil {
 		http.Error(w, "Failed to fetch expressions", http.StatusInternalServerError)
 		return
@@ -68,6 +68,7 @@ func main() {
 
 	// Подключение статических файлов (CSS, JS)
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./web/static"))))
-	fmt.Println("Starting web-interface on 8081")
+
+	fmt.Println("Starting web-interface on localhost:8081")
 	http.ListenAndServe("0.0.0.0:8081", nil)
 }

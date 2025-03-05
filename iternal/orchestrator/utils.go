@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"time"
 
@@ -57,6 +58,19 @@ func isOperator(s string) bool {
 	return s == "+" || s == "-" || s == "*" || s == "/"
 }
 
+func CheckExpression(exp string) bool {
+	// Проверка на разрешенные символы без пробелов и правильное размещение операторов
+	re := regexp.MustCompile(`^[0-9\+\-\*/\(\)]*$`) // Разрешаем только цифры, операторы и скобки
+	if !re.MatchString(exp) {
+		return false
+	}
+
+	// Проверка на правильную последовательность чисел, операторов и скобок
+	// Пример: (7+1)/(2+2)*4, (32-((4+12)*2))-1
+	re2 := regexp.MustCompile(`^(\d+|\([\d\+\-\*/\(\)]+\))([\+\-\*/]\d+|\([\d\+\-\*/\(\)]+\))*$`)
+	return re2.MatchString(exp)
+}
+
 func (a *API) createTasks(rpn []string, expID string) ([]string, []Task) {
 	stack := []string{}
 	tasks := []Task{}
@@ -99,6 +113,25 @@ func (a *API) createTasks(rpn []string, expID string) ([]string, []Task) {
 	return stack, tasks
 }
 
+func (a *API) calculateExpression(exp *Expression) {
+	a.Expressions[exp.ID].Status = StatusInProgress
+	rpn, err := parser.ParserToRPN(exp.Input)
+	if err != nil {
+		a.Expressions[exp.ID].Status = StatusFailed
+		return
+	}
+	new_rpn, tasks := a.createTasks(rpn, exp.ID)
+	a.muTasks.Lock()
+	a.Tasks[exp.ID] = tasks
+	a.rpnCurrent[exp.ID] = new_rpn
+	a.muTasks.Unlock()
+	go func() {
+		for _, v := range tasks {
+			a.queque <- v
+		}
+	}()
+}
+
 func (a *API) continueExpressionCalculation(expID string) {
 	new_rpn, tasks := a.createTasks(a.rpnCurrent[expID], expID)
 	if len(tasks) == 0 {
@@ -118,22 +151,4 @@ func (a *API) continueExpressionCalculation(expID string) {
 		}
 	}()
 	a.muTasks.Unlock()
-}
-
-func (a *API) calculateExpression(exp *Expression) {
-	a.Expressions[exp.ID].Status = StatusInProgress
-	rpn, err := parser.ParserToRPN(exp.Input)
-	if err != nil {
-		return
-	}
-	new_rpn, tasks := a.createTasks(rpn, exp.ID)
-	a.muTasks.Lock()
-	a.Tasks[exp.ID] = tasks
-	a.rpnCurrent[exp.ID] = new_rpn
-	a.muTasks.Unlock()
-	go func() {
-		for _, v := range tasks {
-			a.queque <- v
-		}
-	}()
 }

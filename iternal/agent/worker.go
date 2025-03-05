@@ -30,20 +30,17 @@ func Worker(wg *sync.WaitGroup, id int) {
 		}()
 		select {
 		case result := <-res:
-			err = SendResult(Res{ID: task.ID, Result: result, Timeout: false, Errors: nil})
-			fmt.Printf("sending %v, goroutine: %v, %v\n", task.ID, id, res)
+			err = SendResult(Res{ID: task.ID, Result: result, Timeout: false, Errors: ""})
 			if err != nil {
 				fmt.Printf("Worker %d: failed to send result", err)
 			}
 		case err := <-errors:
-			err = SendResult(Res{ID: task.ID, Result: 0, Timeout: false, Errors: err})
-			fmt.Printf("errors %v, goroutine: %v\n", task.ID, id)
+			err = SendResult(Res{ID: task.ID, Result: 0, Timeout: false, Errors: fmt.Sprint(err)})
 			if err != nil {
 				fmt.Printf("Worker %d: failed to send result", err)
 			}
 		case <-time.After(task.OperationTime):
-			err = SendResult(Res{ID: task.ID, Result: 0, Timeout: true, Errors: nil})
-			fmt.Printf("timeout %v, goroutine: %v\n", task, id)
+			err = SendResult(Res{ID: task.ID, Result: 0, Timeout: true, Errors: ""})
 			if err != nil {
 				fmt.Printf("Worker %d: failed to send result", err)
 			}

@@ -1,11 +1,11 @@
 package orchestrator
 
-// TODO: logger
-
 import (
 	"encoding/json"
 	"net/http"
 	"strings"
+
+	"github.com/OnYyon/GoroutineRPNServer/iternal/parser"
 )
 
 func (a *API) AddNewExpression(w http.ResponseWriter, r *http.Request) {
@@ -15,11 +15,24 @@ func (a *API) AddNewExpression(w http.ResponseWriter, r *http.Request) {
 	var request struct {
 		Expression string `json:"expression"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+	err := json.NewDecoder(r.Body).Decode(&request)
+	if err != nil {
 		http.Error(w, "Oppps something went wrong", 500)
 		return
 	}
-
+	if request.Expression == "" {
+		http.Error(w, "Oppps something went wrong", 500)
+		return
+	}
+	if !CheckExpression(request.Expression) {
+		http.Error(w, "Invalid data", http.StatusUnprocessableEntity)
+		return
+	}
+	_, err = parser.ParserToRPN(request.Expression)
+	if err != nil {
+		http.Error(w, "Invalid data", http.StatusUnprocessableEntity)
+		return
+	}
 	expression := Expression{
 		ID:     getID(),
 		Status: StatusNew,
@@ -87,7 +100,7 @@ func (a *API) GetPostResult(w http.ResponseWriter, r *http.Request) {
 		ID      string  `json:"id"`
 		Result  float64 `json:"result"`
 		Timeout bool    `json:"timeout"`
-		Errors  error   `json:"errors"`
+		Errors  string  `json:"errors"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&result); err != nil {
 		http.Error(w, "Invalid request", http.StatusBadRequest)
@@ -97,12 +110,12 @@ func (a *API) GetPostResult(w http.ResponseWriter, r *http.Request) {
 	defer a.muTasks.Unlock()
 	for exprID, tasks := range a.Tasks {
 		for i, task := range tasks {
-			if result.Errors != nil {
-				a.Tasks[exprID][i].Status = StatusFailed
+			if result.Errors != "" {
+				a.Expressions[exprID].Status = StatusFailed
 				return
 			} else if result.Timeout {
 				if a.repeats[result.ID] >= 5 {
-					a.Tasks[exprID][i].Status = StatusFailed
+					a.Expressions[exprID].Status = StatusFailed
 				}
 				a.repeats[result.ID]++
 				go func() {

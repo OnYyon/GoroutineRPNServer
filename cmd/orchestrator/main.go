@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -27,6 +28,7 @@ func main() {
 	r.HandleFunc("/iternal/task", api.GetTasksToAgent).Methods("GET")
 	r.HandleFunc("/iternal/task", api.GetPostResult).Methods("POST")
 
+	fmt.Println("Starting orhcestrator on localhost:8080")
 	if err := http.ListenAndServe("0.0.0.0:8080", r); err != nil {
 		log.Fatal(err)
 	}
