@@ -1,12 +1,12 @@
 FROM golang:1.23-alpine AS builder
 
 WORKDIR /app
-
 COPY go.mod go.sum ./
 RUN go mod download
-
 COPY . .
+RUN go build -o main ./cmd/orchestrator/main.go
 
-EXPOSE 8080
-
-ENTRYPOINT ["go", "run", "/app/cmd/orchestrator/main.go"]
+FROM alpine:latest
+WORKDIR /app/cmd/orchestrator
+COPY --from=builder ./app .
+ENTRYPOINT ["./main"]

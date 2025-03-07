@@ -11,7 +11,6 @@ import (
 
 var templates = template.Must(template.ParseGlob("./web/templates/*.html"))
 
-// Структура для выражения
 type Expression struct {
 	ID     string  `json:"id"`
 	Input  string  `json:"input"`
@@ -19,12 +18,10 @@ type Expression struct {
 	Result float64 `json:"result"`
 }
 
-// Главная страница
 func homeHandler(w http.ResponseWriter, r *http.Request) {
 	templates.ExecuteTemplate(w, "index.html", nil)
 }
 
-// Отправка выражения на сервер
 func addExpressionHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
@@ -46,7 +43,6 @@ func addExpressionHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
-// Получение списка выражений
 func getExpressionsHandler(w http.ResponseWriter, r *http.Request) {
 	resp, err := http.Get("http://orchestrator:8080/api/v1/expressions")
 	if err != nil {
@@ -66,7 +62,6 @@ func main() {
 	http.HandleFunc("/add", addExpressionHandler)
 	http.HandleFunc("/expressions", getExpressionsHandler)
 
-	// Подключение статических файлов (CSS, JS)
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./web/static"))))
 
 	fmt.Println("Starting web-interface on localhost:8081")
